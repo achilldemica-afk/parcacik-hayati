@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcacik Hayati</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a12;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    padding: 10px 16px 6px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  h1 {
+    font-size: 16px; font-weight: 700; letter-spacing: 0.08em;
+    background: linear-gradient(90deg, #4A9EFF, #4ECDC4, #FF6B6B);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .subtitle { font-size: 10px; color: #555; letter-spacing: 0.05em; margin-top: 1px; }
+  .controls { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+  .btn {
+    background: #1a1a2e; border: 1px solid #333; padding: 4px 10px;
+    border-radius: 5px; cursor: pointer; font-size: 11px; font-family: inherit; transition: all 0.2s;
+  }
+  .btn:hover { border-color: #555; }
+  .btn-pause { color: #FFE66D; }
+  .btn-pause.paused { color: #4ECDC4; }
+  .btn-reset { color: #FF6B6B; }
+  .btn-mode { color: #4A9EFF; }
+  .btn-mode.active { background: #4A9EFF22; border-color: #4A9EFF; }
+  .btn-save { color: #2EC4B6; }
+  .btn-saved { color: #FF9F43; position: relative; }
+  .btn-saved.active { background: #FF9F4322; border-color: #FF9F43; }
+  .btn-saved .delete-x {
+    display: none; position: absolute; top: -6px; right: -6px;
+    background: #FF6B6B; color: #fff; border-radius: 50%;
+    width: 14px; height: 14px; font-size: 9px; line-height: 14px; text-align: center;
+    cursor: pointer;
+  }
+  .btn-saved:hover .delete-x { display: block; }
+
+  .main-area { flex: 1; display: flex; min-height: 0; padding: 0 10px 10px; gap: 10px; }
+  .canvas-wrap { flex: 1; min-width: 0; display: flex; }
+  canvas { width: 100%; height: 100%; border-radius: 8px; border: 1px solid #1a1a2e; display: block; }
+
+  .panel {
+    width: 260px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column; gap: 6px; padding: 2px;
+  }
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  .section { background: #12121f; border: 1px solid #1e1e33; border-radius: 7px; padding: 8px; }
+  .section-title { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+
+  .slider-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .slider-row:last-child { margin-bottom: 0; }
+  .slider-row label { font-size: 9px; color: #777; min-width: 52px; white-space: nowrap; }
+  .slider-row input[type="range"] { flex: 1; height: 3px; cursor: pointer; }
+  .slider-row .val { font-size: 9px; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .rules-grid { display: grid; gap: 3px; }
+  .rule-cell {
+    background: #0d0d1a; border: 1px solid #1a1a2e;
+    border-radius: 4px; padding: 4px 3px; text-align: center;
+  }
+  .rule-dots {
+    display: flex; align-items: center; justify-content: center;
+    gap: 2px; font-size: 7px; color: #444; margin-bottom: 2px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .rule-cell input[type="range"] { width: 100%; height: 3px; cursor: pointer; }
+  .rule-val { font-size: 8px; color: #555; margin-top: 1px; }
+  .rule-cell .rule-name { font-size: 7px; color: #444; margin-bottom: 1px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 5px; }
+  .legend-item { display: flex; align-items: center; gap: 3px; font-size: 8px; color: #777; }
+
+  .info { font-size: 8px; color: #444; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 id="titleText">PARCACIK HAYATI</h1>
+  </div>
+  <div class="controls" id="controlsBar">
+    <button class="btn btn-mode" id="btnRandom" onclick="setMode('random')">Rastgele</button>
+    <button class="btn btn-mode" id="btnOzne" onclick="setMode('ozne')">Ozne</button>
+    <button class="btn btn-save" id="btnSave" onclick="saveTemplate()">&#128190; Kaydet</button>
+    <span id="savedButtons"></span>
+    <button class="btn" style="color:#A06CD5" onclick="changeSpeed(-1)">&#9664;&#9664;</button>
+    <span style="font-size:10px;color:#666;min-width:28px;text-align:center" id="speedLabel">1x</span>
+    <button class="btn" style="color:#A06CD5" onclick="changeSpeed(1)">&#9654;&#9654;</button>
+    <button class="btn btn-pause" id="btnPause" onclick="togglePause()">&#10074;&#10074;</button>
+    <button class="btn btn-reset" onclick="reset()">&#10227;</button>
+  </div>
+</header>
+
+<div class="main-area">
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div class="panel">
+    <div class="legend" id="legend" style="display:none"></div>
+    <div id="infoText" style="display:none"></div>
+
+    <div class="section">
+      <div class="section-title">Ayarlar</div>
+      <div class="slider-row">
+        <label>Master</label>
+        <input type="range" id="masterSlider" min="-1" max="1" step="0.05" value="0"
+          style="accent-color:#FFE66D" oninput="applyMaster(parseFloat(this.value))">
+        <span class="val" id="masterVal" style="color:#FFE66D">---</span>
+      </div>
+      <div class="slider-row" id="bondRow" style="display:none">
+        <label>Bond gucu</label>
+        <input type="range" id="bondSlider" min="0.5" max="5" step="0.1" value="2"
+          style="accent-color:#4ECDC4" oninput="bondK=parseFloat(this.value);document.getElementById('bondVal').textContent=parseFloat(this.value).toFixed(1)">
+        <span class="val" id="bondVal" style="color:#4ECDC4">2.0</span>
+      </div>
+      <div class="slider-row" id="tempRow" style="display:none">
+        <label>Sicaklik</label>
+        <input type="range" id="tempSlider" min="0" max="1" step="0.05" value="0.15"
+          style="accent-color:#FF6B6B" oninput="temperature=parseFloat(this.value);document.getElementById('tempVal').textContent=parseFloat(this.value).toFixed(2)">
+        <span class="val" id="tempVal" style="color:#FF6B6B">0.15</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Etkilesim Matrisi</div>
+      <div class="rules-grid" id="rulesGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// TYPE DEFINITIONS
+// =============================================
+
+const OCEAN_TYPES = [
+  { name: "Su",     color: "#4A9EFF", size: 1.5 },
+  { name: "Bas",    color: "#4ECDC4", size: 3.5 },
+  { name: "Kuyruk", color: "#FF6B6B", size: 3.0 },
+];
+
+const RANDOM_TYPES = [
+  { name: "Kirmizi", color: "#FF6B6B", size: 2.5 },
+  { name: "Turkuaz", color: "#4ECDC4", size: 2.5 },
+  { name: "Sari",    color: "#FFE66D", size: 2.5 },
+  { name: "Mor",     color: "#A06CD5", size: 2.5 },
+  { name: "Yesil",   color: "#2EC4B6", size: 2.5 },
+];
+
+const OCEAN_MATRIX = [
+  [+0.02,+0.30,-0.65],
+  [+0.35,-0.05,+0.00],
+  [-0.70,+0.00,+0.45],
+];
+
+// Ozne preset — asimetrik kovalama zinciri
+// Her renk bir sonrakini kovalar, oncekinden kacar
+// Kaostan kumeler olusur, kumeler "ozne" gibi gorulur, kovalamaca "niyet" gibi gorulur
+const OZNE_MATRIX = [
+//  Krm    Trk    Sar    Mor    Ysl
+  [-0.25, +0.27, -0.51, -0.92, +0.65],
+  [+0.04, -0.46, +0.73, +0.77, +0.57],
+  [+0.48, +0.02, +0.93, -0.22, -0.20],
+  [-0.48, +0.78, -0.49, +0.20, +0.67],
+  [+0.98, +0.54, -0.71, -0.54, +0.39],
+];
+
+// =============================================
+// SAVED TEMPLATES (localStorage)
+// =============================================
+
+const STORAGE_KEY = "parcacik_saved";
+
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function storeSaved(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+function saveTemplate() {
+  const name = prompt("Bu evrene bir isim ver:");
+  if (!name || !name.trim()) return;
+  const saved = loadSaved();
+  saved.push({
+    name: name.trim(),
+    matrix: matrix.map(r => [...r]),
+    numTypes: N,
+    particleCount: particles.length,
+    mode: mode, // hangi moddan kaydedildigi
+  });
+  storeSaved(saved);
+  renderSavedButtons();
+}
+
+function deleteSaved(index, e) {
+  e.stopPropagation();
+  const saved = loadSaved();
+  saved.splice(index, 1);
+  storeSaved(saved);
+  renderSavedButtons();
+}
+
+function loadTemplate(index) {
+  const saved = loadSaved();
+  const tmpl = saved[index];
+  if (!tmpl) return;
+
+  // Determine types from matrix size
+  if (tmpl.numTypes === 3) {
+    TYPES = OCEAN_TYPES;
+    mode = "ocean";
+  } else {
+    TYPES = RANDOM_TYPES;
+    mode = "random";
+  }
+  N = tmpl.numTypes;
+
+  matrix = tmpl.matrix.map(r => [...r]);
+
+  // Create particles
+  particles = []; bonds = [];
+  if (mode === "ocean") {
+    createOceanWorld();
+  } else {
+    const total = tmpl.particleCount || 280;
+    const per = Math.floor(total / N);
+    for (let t = 0; t < N; t++) {
+      const count = t === 0 ? total - per * (N - 1) : per;
+      for (let i = 0; i < count; i++)
+        particles.push({ x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0, type: t });
+    }
+  }
+
+  // Update UI
+  document.getElementById("btnRandom").classList.remove("active");
+  document.getElementById("btnOcean").classList.remove("active");
+  document.querySelectorAll(".btn-saved").forEach(b => b.classList.remove("active"));
+  const btn = document.querySelector(`[data-saved-index="${index}"]`);
+  if (btn) btn.classList.add("active");
+
+  document.getElementById("titleText").textContent = tmpl.name.toUpperCase();
+  // subtitle removed
+  document.getElementById("infoText").textContent = "";
+  document.getElementById("infoText").style.display = "none";
+  document.getElementById("bondRow").style.display = mode === "ocean" ? "flex" : "none";
+  document.getElementById("tempRow").style.display = mode === "ocean" ? "flex" : "none";
+
+  buildLegend();
+  buildRulesUI();
+  document.getElementById("masterSlider").value = 0;
+  document.getElementById("masterVal").textContent = "---";
+  ctx.fillStyle = "#0a0a12";
+  ctx.fillRect(0, 0, W, H);
+}
+
+function renderSavedButtons() {
+  const container = document.getElementById("savedButtons");
+  const saved = loadSaved();
+  container.innerHTML = "";
+  saved.forEach((tmpl, i) => {
+    const btn = document.createElement("button");
+    btn.className = "btn btn-saved";
+    btn.dataset.savedIndex = i;
+    btn.onclick = () => loadTemplate(i);
+    btn.innerHTML = `${tmpl.name}<span class="delete-x" onclick="deleteSaved(${i}, event)">&times;</span>`;
+    container.appendChild(btn);
+  });
+}
+
+// =============================================
+// STATE
+// =============================================
+
+let TYPES = RANDOM_TYPES;
+let N = TYPES.length;
+
+const FRICTION = 0.92;
+const DT = 0.4;
+const FORCE_RANGE = 100;
+const BOND_REST = 12;
+
+let canvas, ctx;
+let particles = [];
+let bonds = [];
+let matrix = [];
+let running = true;
+let mode = "random";
+let W = 700, H = 500;
+let bondK = 2.0;
+let temperature = 0.15;
+const SPEED_LEVELS = [0.25, 0.5, 1, 2, 4, 8];
+let speedIndex = 2;
+let slowCounter = 0;
+
+const NUM_LIPIDS = 80;
+const NUM_WATER = 300;
+
+function fmtVal(v) { v = parseFloat(v); return (v > 0 ? "+" : "") + v.toFixed(2); }
+
+function randomMatrix(n) {
+  const m = [];
+  for (let i = 0; i < n; i++) { m[i] = []; for (let j = 0; j < n; j++) m[i][j] = Math.random() * 2 - 1; }
+  return m;
+}
+
+// =============================================
+// WORLD CREATION
+// =============================================
+
+function createOceanWorld() {
+  particles = []; bonds = [];
+  for (let m = 0; m < NUM_LIPIDS; m++) {
+    const cx = Math.random() * W, cy = Math.random() * H;
+    const angle = Math.random() * Math.PI * 2;
+    const baseIdx = particles.length;
+    particles.push({ x: cx, y: cy, vx: 0, vy: 0, type: 1 });
+    particles.push({ x: cx + Math.cos(angle) * BOND_REST, y: cy + Math.sin(angle) * BOND_REST, vx: 0, vy: 0, type: 2 });
+    particles.push({ x: cx + Math.cos(angle) * BOND_REST * 2, y: cy + Math.sin(angle) * BOND_REST * 2, vx: 0, vy: 0, type: 2 });
+    bonds.push([baseIdx, baseIdx + 1]);
+    bonds.push([baseIdx + 1, baseIdx + 2]);
+  }
+  for (let i = 0; i < NUM_WATER; i++)
+    particles.push({ x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0, type: 0 });
+}
+
+function createRandomWorld(count) {
+  particles = []; bonds = [];
+  const total = count || 280, per = Math.floor(total / N);
+  for (let t = 0; t < N; t++) {
+    const c = t === 0 ? total - per * (N - 1) : per;
+    for (let i = 0; i < c; i++)
+      particles.push({ x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0, type: t });
+  }
+}
+
+// =============================================
+// UI
+// =============================================
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  W = Math.floor(r.width); H = Math.floor(r.height);
+  canvas.width = W; canvas.height = H;
+}
+
+function buildLegend() {
+  document.getElementById("legend").innerHTML = TYPES.map(t =>
+    `<span class="legend-item"><span class="dot" style="background:${t.color}"></span>${t.name}</span>`
+  ).join("");
+}
+
+function buildRulesUI() {
+  const grid = document.getElementById("rulesGrid");
+  grid.innerHTML = "";
+  grid.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const val = matrix[i][j];
+      const cell = document.createElement("div");
+      cell.className = "rule-cell";
+      cell.innerHTML = `
+        <div class="rule-dots">
+          <span class="dot" style="background:${TYPES[i].color}"></span>&rarr;<span class="dot" style="background:${TYPES[j].color}"></span>
+        </div>
+        <input type="range" min="-1" max="1" step="0.05" value="${val}"
+          style="accent-color:${TYPES[i].color}" data-i="${i}" data-j="${j}">
+        <div class="rule-val" id="rv-${i}-${j}">${fmtVal(val)}</div>
+      `;
+      cell.querySelector("input").addEventListener("input", function() {
+        const v = parseFloat(this.value);
+        matrix[this.dataset.i][this.dataset.j] = v;
+        document.getElementById(`rv-${this.dataset.i}-${this.dataset.j}`).textContent = fmtVal(v);
+      });
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function syncSlidersFromMatrix() {
+  document.querySelectorAll(".rule-cell input[type='range']").forEach(s => {
+    const i = s.dataset.i, j = s.dataset.j;
+    s.value = matrix[i][j];
+    document.getElementById(`rv-${i}-${j}`).textContent = fmtVal(matrix[i][j]);
+  });
+}
+
+function applyMaster(val) {
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) matrix[i][j] = val;
+  document.getElementById("masterVal").textContent = fmtVal(val);
+  syncSlidersFromMatrix();
+}
+
+const MODE_CONFIG = {
+  random: {
+    title: "PARCACIK HAYATI",
+    subtitle: "basit kurallar \u2192 karmasik davranis",
+    info: "",
+    types: RANDOM_TYPES,
+    showBond: false, showTemp: false,
+  },
+  ocean: {
+    title: "PREBIYOTIK CORBA",
+    subtitle: "fosfolipid membran kendili\u011finden olu\u015fumu",
+    info: "Fosfolipid = 1 bas (hidrofilik) + 2 kuyruk (hidrofobik), spring bond ile bagli. Su molekulleri kuyrugu iterek membran olusumunu tetikler.",
+    types: OCEAN_TYPES,
+    showBond: true, showTemp: true,
+  },
+  ozne: {
+    title: "FONKSIYONA AHLAK ATAMAK",
+    subtitle: "kaos \u2192 k\u00fcme \u2192 \u00f6zne ill\u00fczyonu \u2192 niyet atf\u0131",
+    info: "",
+    types: RANDOM_TYPES,
+    showBond: false, showTemp: false,
+  },
+};
+
+function setMode(m) {
+  mode = m;
+  const cfg = MODE_CONFIG[m];
+
+  document.getElementById("btnRandom").classList.toggle("active", m === "random");
+  document.getElementById("btnOzne").classList.toggle("active", m === "ozne");
+  document.querySelectorAll(".btn-saved").forEach(b => b.classList.remove("active"));
+
+  document.getElementById("titleText").textContent = cfg.title;
+  // subtitle removed
+  document.getElementById("infoText").textContent = cfg.info;
+  document.getElementById("infoText").style.display = cfg.info ? "block" : "none";
+  document.getElementById("bondRow").style.display = cfg.showBond ? "flex" : "none";
+  document.getElementById("tempRow").style.display = cfg.showTemp ? "flex" : "none";
+
+  TYPES = cfg.types;
+  N = TYPES.length;
+
+  if (m === "ocean") { matrix = OCEAN_MATRIX.map(r => [...r]); createOceanWorld(); }
+  else if (m === "ozne") { matrix = OZNE_MATRIX.map(r => [...r]); createRandomWorld(350); }
+  else { matrix = randomMatrix(N); createRandomWorld(); }
+
+  buildLegend();
+  buildRulesUI();
+  document.getElementById("masterSlider").value = 0;
+  document.getElementById("masterVal").textContent = "---";
+  ctx.fillStyle = "#0a0a12";
+  ctx.fillRect(0, 0, W, H);
+}
+
+function reset() {
+  if (mode === "ocean") { matrix = OCEAN_MATRIX.map(r => [...r]); createOceanWorld(); }
+  else if (mode === "ozne") { matrix = OZNE_MATRIX.map(r => [...r]); createRandomWorld(350); }
+  else { matrix = randomMatrix(N); createRandomWorld(); }
+  syncSlidersFromMatrix();
+  ctx.fillStyle = "#0a0a12";
+  ctx.fillRect(0, 0, W, H);
+}
+
+function changeSpeed(dir) {
+  speedIndex = Math.max(0, Math.min(SPEED_LEVELS.length - 1, speedIndex + dir));
+  document.getElementById("speedLabel").textContent = SPEED_LEVELS[speedIndex] + "x";
+}
+
+function togglePause() {
+  running = !running;
+  const btn = document.getElementById("btnPause");
+  btn.className = running ? "btn btn-pause" : "btn btn-pause paused";
+  btn.innerHTML = running ? "&#10074;&#10074;" : "&#9654;";
+}
+
+// =============================================
+// PHYSICS
+// =============================================
+
+function simulate() {
+  const n = particles.length;
+
+  for (let i = 0; i < n; i++) { particles[i].fx = 0; particles[i].fy = 0; }
+
+  // Bond forces (ocean mode only)
+  for (const [ai, bi] of bonds) {
+    const a = particles[ai], b = particles[bi];
+    let dx = b.x - a.x, dy = b.y - a.y;
+    if (dx > W / 2) dx -= W; if (dx < -W / 2) dx += W;
+    if (dy > H / 2) dy -= H; if (dy < -H / 2) dy += H;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 0.1) {
+      const f = bondK * (dist - BOND_REST) / dist;
+      a.fx += dx * f; a.fy += dy * f;
+      b.fx -= dx * f; b.fy -= dy * f;
+    }
+  }
+
+  // Particle-particle forces
+  for (let i = 0; i < n; i++) {
+    const a = particles[i];
+    for (let j = i + 1; j < n; j++) {
+      const b = particles[j];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      if (dx > W / 2) dx -= W; if (dx < -W / 2) dx += W;
+      if (dy > H / 2) dy -= H; if (dy < -H / 2) dy += H;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0 && dist < FORCE_RANGE) {
+        const fAB = matrix[a.type][b.type];
+        const fBA = matrix[b.type][a.type];
+        const sAB = dist < 30 ? (dist / 30 - 1) * 2 : fAB * (1 - (dist - 30) / (FORCE_RANGE - 30));
+        const sBA = dist < 30 ? (dist / 30 - 1) * 2 : fBA * (1 - (dist - 30) / (FORCE_RANGE - 30));
+        const nx = dx / dist, ny = dy / dist;
+        a.fx += nx * sAB; a.fy += ny * sAB;
+        b.fx -= nx * sBA; b.fy -= ny * sBA;
+      }
+    }
+  }
+
+  // Thermal noise (ocean: water only)
+  if (temperature > 0 && mode === "ocean") {
+    for (let i = 0; i < n; i++) {
+      if (particles[i].type === 0) {
+        particles[i].fx += (Math.random() - 0.5) * temperature * 4;
+        particles[i].fy += (Math.random() - 0.5) * temperature * 4;
+      }
+    }
+  }
+
+  // Integrate
+  for (const p of particles) {
+    p.vx = (p.vx + p.fx * DT) * FRICTION;
+    p.vy = (p.vy + p.fy * DT) * FRICTION;
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x += W; if (p.x >= W) p.x -= W;
+    if (p.y < 0) p.y += H; if (p.y >= H) p.y -= H;
+  }
+}
+
+// =============================================
+// RENDER
+// =============================================
+
+function step() {
+  if (running) {
+    const spd = SPEED_LEVELS[speedIndex];
+    if (spd >= 1) { for (let s = 0; s < spd; s++) simulate(); }
+    else {
+      const interval = Math.round(1 / spd);
+      slowCounter++;
+      if (slowCounter >= interval) { simulate(); slowCounter = 0; }
+    }
+  }
+
+  ctx.fillStyle = "rgba(10, 10, 18, 0.15)";
+  ctx.fillRect(0, 0, W, H);
+
+  // Bonds
+  if (bonds.length > 0) {
+    ctx.strokeStyle = "rgba(100, 100, 120, 0.3)";
+    ctx.lineWidth = 1;
+    for (const [ai, bi] of bonds) {
+      const a = particles[ai], b = particles[bi];
+      if (Math.abs(b.x - a.x) < W / 2 && Math.abs(b.y - a.y) < H / 2) {
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+    }
+  }
+
+  // Particles
+  for (const p of particles) {
+    const t = TYPES[p.type];
+    const r = t.size;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.fill();
+    // Glow
+    if (mode !== "ocean" || p.type !== 0) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r + 2, 0, Math.PI * 2);
+      ctx.fillStyle = t.color + "22";
+      ctx.fill();
+    }
+  }
+
+  requestAnimationFrame(step);
+}
+
+// =============================================
+// INIT
+// =============================================
+
+canvas = document.getElementById("canvas");
+ctx = canvas.getContext("2d");
+resize();
+window.addEventListener("resize", resize);
+
+renderSavedButtons();
+setMode("ozne");
+running = false;
+document.getElementById("btnPause").className = "btn btn-pause paused";
+document.getElementById("btnPause").innerHTML = "&#9654;";
+step();
+</script>
+</body>
+</html>
