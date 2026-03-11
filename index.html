@@ -51,9 +51,20 @@
   .canvas-wrap { flex: 1; min-width: 0; display: flex; }
   canvas { width: 100%; height: 100%; border-radius: 8px; border: 1px solid #1a1a2e; display: block; }
 
+  .btn-panel { color: #888; }
+  .btn-panel.active { color: #4ECDC4; background: #4ECDC422; border-color: #4ECDC4; }
+
   .panel {
     width: 260px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden;
-    display: flex; flex-direction: column; gap: 6px; padding: 2px;
+    display: none; flex-direction: column; gap: 6px; padding: 2px;
+  }
+  .panel.visible { display: flex; }
+  @media (max-width: 768px) {
+    .panel.visible {
+      position: absolute; right: 10px; top: 50px; bottom: 10px;
+      z-index: 10; background: #0a0a12ee; backdrop-filter: blur(8px);
+      border-radius: 8px; padding: 8px; border: 1px solid #1e1e33;
+    }
   }
   .panel::-webkit-scrollbar { width: 4px; }
   .panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
@@ -102,6 +113,7 @@
     <button class="btn" style="color:#A06CD5" onclick="changeSpeed(1)">&#9654;&#9654;</button>
     <button class="btn btn-pause" id="btnPause" onclick="togglePause()">&#10074;&#10074;</button>
     <button class="btn btn-reset" onclick="reset()">&#10227;</button>
+    <button class="btn btn-panel" id="btnPanel" onclick="togglePanel()">&#9881;</button>
   </div>
 </header>
 
@@ -473,6 +485,14 @@ function reset() {
 function changeSpeed(dir) {
   speedIndex = Math.max(0, Math.min(SPEED_LEVELS.length - 1, speedIndex + dir));
   document.getElementById("speedLabel").textContent = SPEED_LEVELS[speedIndex] + "x";
+}
+
+function togglePanel() {
+  const panel = document.querySelector(".panel");
+  const btn = document.getElementById("btnPanel");
+  panel.classList.toggle("visible");
+  btn.classList.toggle("active");
+  setTimeout(resize, 50);
 }
 
 function togglePause() {
